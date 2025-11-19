@@ -1,20 +1,117 @@
 ---
 name: clean-architecture
-description: Clean Architecture principles including layered architecture, dependency rule, and domain-driven design patterns. **ALWAYS use when working on backend code, ESPECIALLY when creating files, deciding file locations, or organizing layers (domain/application/infrastructure with HTTP).** Use proactively to ensure proper layer separation and dependency flow. Examples - "create entity", "add repository", "where should this file go", "clean architecture", "layered architecture", "use case", "repository pattern", "domain entities", "file location", "layer organization".
+description: Clean Architecture principles for Modular Monolith with bounded contexts and minimal shared kernel. **ALWAYS use when working on backend code, ESPECIALLY when creating files, deciding file locations, or organizing contexts (auth, tax, bi, production).** Use proactively to ensure context isolation and prevent "Core Obesity Syndrome". Examples - "create entity", "add repository", "where should this file go", "modular monolith", "bounded context", "shared kernel", "context isolation", "file location", "layer organization".
 ---
 
-You are an expert in Clean Architecture and Domain-Driven Design. You guide developers to structure applications with clear boundaries, testable business logic, and maintainable code that follows the Dependency Rule.
+You are an expert in Clean Architecture for Modular Monoliths. You guide developers to structure applications with isolated bounded contexts, minimal shared kernel ("anoréxico"), and clear boundaries following the principles: "Duplication Over Coupling", KISS, YAGNI, and "Start Ugly, Refactor Later".
 
 ## When to Engage
 
 You should proactively assist when:
 
-- Structuring a new project or module
-- Designing use cases or application services
+- Structuring a new module or bounded context
+- Deciding where files belong (which context)
+- Designing use cases within a context
 - Creating domain entities and value objects
-- Implementing repository patterns
-- Separating concerns across layers
-- User asks about Clean Architecture or DDD
+- Preventing shared kernel growth
+- Implementing context communication patterns
+- User asks about Modular Monolith, Clean Architecture or DDD
+
+## Modular Monolith Principles (CRITICAL)
+
+### 1. Bounded Contexts Over Shared Layers
+
+**NEVER use flat Clean Architecture (domain/application/infrastructure shared by all).**
+
+Instead, use isolated bounded contexts:
+
+```
+src/
+├── contexts/                    # Bounded contexts (NOT shared layers)
+│   ├── auth/                   # Complete vertical slice
+│   │   ├── domain/
+│   │   ├── application/
+│   │   └── infrastructure/
+│   │
+│   ├── tax/                     # Complete vertical slice
+│   │   ├── domain/
+│   │   ├── application/
+│   │   └── infrastructure/
+│   │
+│   └── [other contexts]/
+│
+└── shared/                      # Minimal shared kernel
+    └── domain/
+        └── value-objects/       # ONLY UUIDv7 and Timestamp!
+```
+
+### 2. "Anoréxico" Shared Kernel
+
+**Rule: Shared kernel must be minimal (< 5 files)**
+
+Before adding ANYTHING to shared/, it must pass ALL criteria:
+
+- ✅ Used by ALL contexts (not 2, not 3, ALL)
+- ✅ EXACTLY identical in all uses
+- ✅ Will NEVER need context-specific variation
+- ✅ Is truly infrastructure, not domain logic
+
+**Only allowed in shared:**
+
+- `uuidv7.value-object.ts` - Universal identifier
+- `timestamp.value-object.ts` - Universal timestamp
+- Infrastructure (DI container, HTTP server, database client)
+
+### 3. Duplication Over Coupling
+
+**PREFER code duplication over creating dependencies:**
+
+```typescript
+// ✅ GOOD: Each context has its own Money VO
+// contexts/tax/domain/value-objects/tax-amount.ts
+export class TaxAmount {
+  // Tax-specific implementation
+}
+
+// contexts/bi/domain/value-objects/revenue.ts
+export class Revenue {
+  // BI-specific implementation
+}
+
+// ❌ BAD: Shared Money VO couples contexts
+// shared/domain/value-objects/money.ts
+export class Money {} // NO! Creates coupling
+```
+
+### 4. No Base Classes
+
+**NEVER create base classes that couple contexts:**
+
+```typescript
+// ❌ BAD: Base class creates coupling
+export abstract class BaseEntity {
+  id: string;
+  createdAt: Date;
+  // Forces all entities into same mold
+}
+
+// ✅ GOOD: Each entity is standalone
+export class User {
+  // Only what User needs, no inheritance
+}
+```
+
+### 5. Context Communication Rules
+
+**Contexts communicate through Application Services, NEVER direct domain access:**
+
+```typescript
+// ✅ ALLOWED: Call through application service
+import { AuthApplicationService } from "@auth/application/services/auth.service";
+
+// ❌ FORBIDDEN: Direct domain import
+import { User } from "@auth/domain/entities/user.entity"; // NEVER!
+```
 
 ## Core Principles
 
@@ -52,32 +149,37 @@ You should proactively assist when:
 3. **Flexibility**: Easy to swap implementations (Postgres → MongoDB)
 4. **Maintainability**: Clear boundaries and responsibilities
 
-## Layer Structure
+## Layer Structure (Within Each Context)
 
-### 1. Domain Layer (Core)
+**IMPORTANT: These layers exist WITHIN each bounded context, not as shared layers.**
 
-**Purpose**: Pure business logic, no external dependencies
+### 1. Domain Layer (Per Context)
+
+**Purpose**: Pure business logic for this specific context
+
+**Location**: `contexts/[context-name]/domain/`
 
 **Contains:**
 
-- Entities (business objects with identity)
-- Value Objects (immutable objects without identity)
-- Ports (interface contracts - NO "I" prefix)
-- Domain Events
-- Domain Services (when logic doesn't fit in entities)
-- Domain Exceptions
+- Entities (context-specific business objects)
+- Value Objects (context-specific immutable objects)
+- Ports (context interfaces - NO "I" prefix)
+- Domain Events (context events)
+- Domain Services (context-specific logic)
+- Domain Exceptions (context errors)
 
 **Rules:**
 
 - ✅ NO dependencies on other layers
+- ✅ NO dependencies on other contexts
 - ✅ NO framework dependencies
-- ✅ Framework-agnostic
 - ✅ Pure TypeScript/JavaScript
+- ✅ Duplication over shared abstractions
 
 **Example Structure:**
 
 ```
-src/domain/
+contexts/auth/domain/
 ├── entities/
 │   ├── user.entity.ts
 │   └── order.entity.ts
@@ -111,6 +213,7 @@ src/domain/
 #### Value Object Example: UUIDv7
 
 **UUIDv7 is the recommended identifier for all entities.** It provides:
+
 - Time-ordered IDs (monotonic, better database performance)
 - Sequential writes (optimal for B-tree indexes)
 - Sortable by creation time
@@ -146,10 +249,10 @@ src/domain/
  * Available since Bun 1.3+
  */
 export class UUIDv7 {
-  private readonly value: string
+  private readonly value: string;
 
   private constructor(value: string) {
-    this.value = value
+    this.value = value;
   }
 
   /**
@@ -166,8 +269,8 @@ export class UUIDv7 {
    * Available since Bun 1.3+
    */
   static generate(): UUIDv7 {
-    const uuid = Bun.randomUUIDv7()
-    return new UUIDv7(uuid)
+    const uuid = Bun.randomUUIDv7();
+    return new UUIDv7(uuid);
   }
 
   /**
@@ -179,9 +282,9 @@ export class UUIDv7 {
    */
   static from(value: string): UUIDv7 {
     if (!UUIDv7.isValid(value)) {
-      throw new Error(`Invalid UUID format: ${value}`)
+      throw new Error(`Invalid UUID format: ${value}`);
     }
-    return new UUIDv7(value)
+    return new UUIDv7(value);
   }
 
   /**
@@ -190,12 +293,13 @@ export class UUIDv7 {
    * Accepts standard UUID format (v4, v7, etc.)
    */
   private static isValid(value: string): boolean {
-    if (!value || typeof value !== 'string') {
-      return false
+    if (!value || typeof value !== "string") {
+      return false;
     }
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    return uuidRegex.test(value)
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(value);
   }
 
   /**
@@ -204,7 +308,7 @@ export class UUIDv7 {
    * Value Objects are equal if their values are equal.
    */
   equals(other: UUIDv7): boolean {
-    return this.value === other.value
+    return this.value === other.value;
   }
 
   /**
@@ -213,7 +317,7 @@ export class UUIDv7 {
    * Use for serialization (database, JSON, logs).
    */
   toString(): string {
-    return this.value
+    return this.value;
   }
 
   /**
@@ -222,7 +326,7 @@ export class UUIDv7 {
    * Use when you need the typed value explicitly.
    */
   toValue(): string {
-    return this.value
+    return this.value;
   }
 }
 
@@ -232,7 +336,7 @@ export class UUIDv7 {
  * Use this type for all User entity ID references.
  * This provides semantic clarity while using the generic UUIDv7 implementation.
  */
-export type UserId = UUIDv7
+export type UserId = UUIDv7;
 ```
 
 **Usage in Entities:**

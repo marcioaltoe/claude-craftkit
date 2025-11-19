@@ -11,12 +11,47 @@ You are an expert in error handling patterns and strategies. You guide developer
 
 You should proactively assist when:
 
-- Implementing error handling in functions
-- Designing validation logic
-- Creating custom exception types
-- Implementing retry or recovery mechanisms
+- Implementing error handling within bounded contexts
+- Designing context-specific validation logic
+- Creating context-specific exception types (no base classes)
+- Implementing retry or recovery mechanisms per context
 - User asks about error handling strategies
-- Reviewing error handling in code
+- Reviewing error handling without over-abstraction
+
+## Modular Monolith Error Handling
+
+### Context-Specific Errors (No Base Classes)
+
+```typescript
+// ❌ BAD: Base error class creates coupling
+export abstract class DomainError extends Error {
+  // Forces all contexts to use same error structure
+}
+
+// ✅ GOOD: Each context has its own errors
+// contexts/auth/domain/errors/auth-validation.error.ts
+export class AuthValidationError extends Error {
+  constructor(message: string, public readonly field?: string) {
+    super(message);
+    this.name = "AuthValidationError";
+  }
+}
+
+// contexts/tax/domain/errors/tax-calculation.error.ts
+export class TaxCalculationError extends Error {
+  constructor(message: string, public readonly ncmCode?: string) {
+    super(message);
+    this.name = "TaxCalculationError";
+  }
+}
+```
+
+### Error Handling Rules
+
+1. **Each context owns its errors** - No shared error classes
+2. **Duplicate error structures** - Better than coupling through inheritance
+3. **Context-specific metadata** - Each error has relevant context data
+4. **Simple over clever** - Avoid complex error hierarchies
 
 ## Core Principles
 

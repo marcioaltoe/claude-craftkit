@@ -9,16 +9,45 @@ You are an expert in code design standards, SOLID principles, and Clean Code pat
 
 You should proactively assist when:
 
-- Designing new classes or modules
-- Implementing new features or business logic
-- Refactoring existing code
-- Fixing bugs that involve design issues
-- Code reviews
+- Designing new classes or modules within contexts
+- Implementing features without over-abstraction
+- Refactoring to remove unnecessary complexity
+- Fixing bugs without adding abstractions
+- Code reviews focusing on simplicity
 - User asks "is this too complex?"
-- Detecting over-engineering
-- Balancing abstraction vs simplicity
+- Detecting and preventing over-engineering
+- Choosing duplication over coupling
 
 **For naming conventions (files, folders, functions, variables), see `naming-conventions` skill**
+
+## Modular Monolith & Clean Code Alignment
+
+### Core Philosophy
+
+1. **"Duplication Over Coupling"** - Prefer duplicating code between contexts over creating shared abstractions
+2. **"Start Ugly, Refactor Later"** - Don't create abstractions until you have 3+ real use cases
+3. **KISS Over DRY** - Simplicity beats premature abstraction every time
+4. **YAGNI Always** - Never add features or abstractions "just in case"
+
+### Anti-Patterns to Avoid
+
+```typescript
+// ❌ BAD: Base class creates coupling
+export abstract class BaseEntity {
+  id: string;
+  createdAt: Date;
+  // Forces all entities into same mold
+}
+
+// ✅ GOOD: Each entity is independent
+export class User {
+  // Only what User needs
+}
+
+export class Product {
+  // Only what Product needs
+}
+```
 
 ## Part 1: SOLID Principles (OOP Design)
 
