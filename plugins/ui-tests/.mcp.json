@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "playwright": {
-      "command": "cmd",
-      "args": ["/c", "bunx", "@playwright/mcp@latest"]
+      "command": "bunx",
+      "args": ["@playwright/mcp@latest", "--browser=chrome", "--isolated"]
     }
   }
 }

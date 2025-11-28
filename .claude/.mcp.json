@@ -3,20 +3,33 @@
     "context7": {
       "type": "stdio",
       "command": "bunx",
-      "args": ["-y", "@upstash/context7-mcp", "--api-key", "$CONTEXT7_API_KEY"],
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "${CONTEXT7_API_KEY}"
+      ],
       "env": {}
     },
     "perplexity": {
       "type": "stdio",
       "command": "perplexity-mcp",
       "env": {
-        "PERPLEXITY_API_KEY": "$PERPLEXITY_API_KEY"
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
       }
     },
     "octocode": {
       "type": "stdio",
       "command": "bunx",
       "args": ["octocode-mcp@latest"]
+    },
+    "sourcebot": {
+      "command": "npx",
+      "args": ["@sourcebot/mcp"],
+      "env": {
+        "SOURCEBOT_HOST": "http://localhost:6006",
+        "SOURCEBOT_API_KEY": "${SOURCEBOT_API_KEY}"
+      }
     }
   }
 }

@@ -600,6 +600,7 @@ import { UserIdentity } from "../../domain/aggregate/user-identity.aggregate";
 ### Private Repository Access & Code Intelligence
 
 - **ALWAYS** use **Octocode MCP** for:
+
   - Accessing private GitHub repositories (backend services, microservices)
   - Exploring repository structure and architectural patterns
   - Searching code across organizational repositories
@@ -608,6 +609,14 @@ import { UserIdentity } from "../../domain/aggregate/user-identity.aggregate";
   - Retrieving file contents from private repos
   - Framework-specific code discovery (e.g., Hono middleware patterns, React patterns)
   - Package dependency research (npm/PyPI metadata)
+
+- **ALWAYS** use **Sourcebot MCP** for:
+  - Multi-repository semantic search across all indexed repositories
+  - Fast trigram-indexed code search (milliseconds across millions of lines)
+  - Regex pattern matching with rich query language
+  - Branch-specific searches and symbol definitions
+  - Large-scale refactoring and code analysis tasks
+  - Complex workflows spanning multiple repositories simultaneously
 
 ### Documentation Lookup
 
@@ -623,7 +632,6 @@ import { UserIdentity } from "../../domain/aggregate/user-identity.aggregate";
 ### Web Research & Documentation
 
 - **ALWAYS** use **Perplexity MCP** for:
-
   - Technical research & documentation (hundreds of QPS)
   - Code patterns, benchmarks, and technical solutions
   - Real-time semantic search with superior accuracy
@@ -649,3 +657,154 @@ import { UserIdentity } from "../../domain/aggregate/user-identity.aggregate";
 - "What are best practices for pre-commit hooks?" → Use Perplexity MCP for research
 - "How to structure React applications?" → Use Perplexity MCP for architectural guidance
 - "Performance optimization techniques for React 19" → Use Perplexity MCP for latest patterns
+
+**Sourcebot MCP Examples:**
+
+- "Find all authentication middleware patterns across our microservices" → Use Sourcebot MCP with `filterByRepoIds`
+- "Search for deprecated API usage in all repositories" → Use Sourcebot MCP for large-scale refactoring
+- "Compare error handling patterns between services" → Use Sourcebot MCP with multiple `filterByRepoIds`
+
+### Code Search and Discovery
+
+**TOOL HIERARCHY** - Use tools in this order:
+
+1. **Sourcebot MCP** (if available) - Multi-repository semantic search with regex support
+2. **Osgrep** (when Sourcebot MCP is NOT available) - Local semantic search that understands code meaning
+3. **Built-in search, grep, or find** (last resort) - Only for exact string pattern matching
+
+<sourcebot>
+## Overview
+
+Sourcebot MCP is a Model Context Protocol server that enables AI agents to perform intelligent code search across
+thousands of repositories. It uses trigram indexing for millisecond searches across millions of lines of code.
+
+## When to Use
+
+**ALWAYS** use Sourcebot MCP when available for code search and discovery. It's the preferred tool over Osgrep and
+traditional search tools.
+
+## Required Workflow
+
+**MANDATORY**: Always use Sourcebot MCP (5-7 times) to search code and find information about libraries, frameworks, and
+code patterns
+
+**CRITICAL**: You MUST use `filterByRepoIds` parameter on EVERY `mcp_sourcebot_search_code` call to restrict searches to
+the relevant repository. Never call `search_code` without specifying `filterByRepoIds`
+
+**REQUIRED WORKFLOW**:
+
+1. First, call `mcp_sourcebot_list_repos` to get the list of available repository IDs
+2. Identify the relevant repository ID(s) for your search (e.g., "github.com/Effect-TS/effect" for EffectTS,
+   "github.com/vercel/ai" for AI SDK)
+3. Always include `filterByRepoIds` with the appropriate repository ID(s) when calling `mcp_sourcebot_search_code`
+4. Use `mcp_sourcebot_get_file_source` to fetch specific file contents when needed (this tool requires `repoId`
+   parameter, so repository filtering is already enforced)
+
+## Usage Pattern
+
+When searching for code examples or documentation:
+
+- Use descriptive queries in the `query` parameter (not just keywords, but full descriptions of what you're looking for)
+- Always specify `filterByRepoIds` to scope your search to the correct repository
+- Use `includeCodeSnippets: true` when you need to see actual code examples
+
+## Examples
+
+- Searching EffectTS patterns: Use `filterByRepoIds: ["github.com/Effect-TS/effect"]`
+- Searching AI SDK: Use `filterByRepoIds: ["github.com/vercel/ai"]`
+- Searching multiple repos: Use `filterByRepoIds: ["repo1", "repo2"]` when comparing patterns across libraries
+
+## Key Features
+
+- **Multi-repository search**: Search across all indexed repositories simultaneously
+- **Regex support**: Use regular expressions for precise pattern matching
+- **Rich query language**: Filter by files, repos, languages, and symbol definitions
+- **Fast performance**: Millisecond searches using trigram indexing
+- **Branch-specific searches**: Search across multiple branches
+- **Syntax highlighting**: Support for 100+ programming languages
+
+## Tool Hierarchy
+
+**IMPORTANT**: Sourcebot MCP is the primary code search tool:
+
+1. **Sourcebot MCP** (if available) - Multi-repository semantic search
+2. **Osgrep** (when Sourcebot MCP is NOT available) - Local semantic search
+3. **grep/find** (last resort) - Only for exact string matching
+
+## Enforcement
+
+**IF YOU DON'T USE THIS** as mentioned above your task will be invalidated </sourcebot>
+
+<osgrep>
+## When to use
+
+Use `osgrep` for all code and concept discovery when Sourcebot MCP is NOT available. Do not use `grep` or `find` unless
+you must match an exact string and `osgrep` fails.
+
+## How to use
+
+**MANDATORY: Always run `osgrep index` before searching.** This ensures the repository is fully indexed and search
+results are accurate and complete.
+
+**Always use the `--json` flag.** The server auto-starts and keeps the index fresh.
+
+### Indexing (Required First Step)
+
+**You MUST run indexing before any search operation:**
+
+```bash
+osgrep index              # Index current directory
+osgrep index --dry-run    # Preview what would be indexed (optional)
+```
+
+This step:
+
+- Pre-warms the cache for faster searches
+- Ensures all recent changes are indexed
+- Respects `.gitignore` and `.osgrepignore` automatically
+- Uses adaptive throttling to prevent system overload
+
+### Basic Search
+
+After indexing, ask a natural language question. Do not `ls` first.
+
+```bash
+osgrep --json "How are user authentication tokens validated?"
+osgrep --json "Where do we handle retries or backoff?"
+```
+
+### Scoped Search
+
+Limit search to a specific directory.
+
+```bash
+osgrep --json "auth middleware" src/api
+```
+
+### Helpful flags
+
+- `--json`: **Required.** Returns structured data (path, line, score, content).
+- `-m <n>`: Max total results (default: 25).
+- `--per-file <n>`: Max matches per file (default: 1). Use `--per-file 5` when exploring a specific file.
+
+### Strategy
+
+1. **MANDATORY:** Run `osgrep index` to ensure the repository is indexed.
+2. Run `osgrep --json "<question>" [path]`.
+3. The output is a dense JSON snippet. If it answers the question, stop.
+4. Only use `Read` if you need the full file context for a returned path.
+5. If results are vague, refine the query or increase `-m`.
+6. If you've made significant changes, re-run `osgrep index` before searching again.
+
+## Tool Hierarchy
+
+**IMPORTANT**: Osgrep is the fallback when Sourcebot MCP is unavailable:
+
+1. **Sourcebot MCP** (if available) - Multi-repository semantic search
+2. **Osgrep** (when Sourcebot MCP is NOT available) - Local semantic search
+3. **grep/find** (last resort) - Only for exact string matching
+
+## Keywords
+
+semantic search, code search, local search, grep alternative, find code, explore codebase, understand code, search by meaning
+</osgrep>
